@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                 Int                   @id @default(autoincrement())
+  name               String
+  slug               String                @unique
+  sku                String                @unique
+  description        String
+  price              Float
+  category_id        Int
+  is_hit             Boolean               @default(false)
+  in_stock           Boolean               @default(true)
+  stock_quantity     Int                   @default(0)
+  main_image         String
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+  category           Category              @relation(fields: [category_id], references: [id])
+  images             ProductImage[]
+  specifications     ProductSpecification[]
+}
+
+model Category {
+  id           Int        @id @default(autoincrement())
+  name         String
+  slug         String     @unique
+  description  String?
+  parent_id    Int?
+  created_at   DateTime   @default(now())
+  parent       Category?  @relation("CategoryToSubcategory", fields: [parent_id], references: [id])
+  children     Category[] @relation("CategoryToSubcategory")
+  products     Product[]
+}
+
+model ProductImage {
+  id         Int      @id @default(autoincrement())
+  product_id Int
+  image_url  String
+  is_main    Boolean  @default(false)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+}
+
+model Specification {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  slug                String                @unique
+  created_at          DateTime              @default(now())
+  productSpecifications ProductSpecification[]
+}
+
+model ProductSpecification {
+  id               Int           @id @default(autoincrement())
+  product_id       Int
+  specification_id Int
+  value            String
+  created_at       DateTime      @default(now())
+  product          Product       @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  specification    Specification @relation(fields: [specification_id], references: [id])
+
+  @@unique([product_id, specification_id])
+}

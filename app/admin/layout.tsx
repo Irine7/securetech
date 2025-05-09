@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ]
 
   return (
-    <div className="flex min-h-screen">
+    <div className="container mx-auto flex min-h-screen">
       {/* Сайдбар */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
         <div className="flex h-14 items-center border-b px-4">

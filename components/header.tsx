@@ -153,7 +153,7 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          <ThemeSwitcher />
+          
           <div className="relative hidden md:block w-[300px]" ref={searchRef}>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -187,7 +187,7 @@ export default function Header() {
                       >
                         <div className="w-10 h-10 bg-gray-100 rounded-md overflow-hidden mr-3 flex-shrink-0">
                           <Image
-                            src={"/placeholder-test.svg?height=40&width=40"}
+                            src={product.main_image || "/placeholder-test.svg?height=40&width=40"}
                             alt={product.name || ""}
                             width={40}
                             height={40}
@@ -218,6 +218,8 @@ export default function Header() {
               </div>
             )}
           </div>
+
+          <ThemeSwitcher />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -286,8 +288,8 @@ export default function Header() {
                     </Link>
                   </div>
 
-                  <Link href="/technology" className="text-sm font-medium">
-                    Технологии
+                  <Link href="/catalog" className="text-sm font-medium">
+                    Каталог
                   </Link>
                   <Link href="/support" className="text-sm font-medium">
                     Поддержка

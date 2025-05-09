@@ -22,6 +22,24 @@ export type ProductUpdateInput = Partial<ProductCreateInput> & { id: number }
 // CRUD операции для товаров
 export async function createProduct(data: ProductCreateInput) {
   try {
+    // Проверяем уникальность SKU перед созданием
+    const skuCheck = await checkSkuUniqueness(data.sku);
+    if (!skuCheck.isUnique) {
+      return { 
+        success: false, 
+        error: 'Товар с таким артикулом (SKU) уже существует. Пожалуйста, используйте другой артикул.' 
+      }
+    }
+    
+    // Проверяем уникальность slug перед созданием
+    const slugCheck = await checkSlugUniqueness(data.slug);
+    if (!slugCheck.isUnique) {
+      return { 
+        success: false, 
+        error: 'Товар с таким URL (slug) уже существует. Пожалуйста, используйте другой URL.' 
+      }
+    }
+    
     // Устанавливаем значение по умолчанию для main_image, если оно не указано
     if (!data.main_image) {
       data.main_image = "/placeholder-test.svg"
@@ -36,8 +54,16 @@ export async function createProduct(data: ProductCreateInput) {
     revalidatePath('/')
     
     return { success: true, product }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка при создании товара:', error)
+    if (error.code === 'P2002') {
+      if (error.meta?.target?.includes('sku')) {
+        return { success: false, error: 'Товар с таким артикулом (SKU) уже существует' }
+      }
+      if (error.meta?.target?.includes('slug')) {
+        return { success: false, error: 'Товар с таким URL (slug) уже существует' }
+      }
+    }
     return { success: false, error: 'Не удалось создать товар' }
   }
 }
@@ -46,6 +72,28 @@ export async function updateProduct(data: ProductUpdateInput) {
   const { id, ...updateData } = data
   
   try {
+    // Проверяем уникальность SKU перед обновлением, если SKU изменился
+    if (updateData.sku) {
+      const skuCheck = await checkSkuUniqueness(updateData.sku, id);
+      if (!skuCheck.isUnique) {
+        return { 
+          success: false, 
+          error: 'Товар с таким артикулом (SKU) уже существует. Пожалуйста, используйте другой артикул.' 
+        }
+      }
+    }
+    
+    // Проверяем уникальность slug перед обновлением, если slug изменился
+    if (updateData.slug) {
+      const slugCheck = await checkSlugUniqueness(updateData.slug, id);
+      if (!slugCheck.isUnique) {
+        return { 
+          success: false, 
+          error: 'Товар с таким URL (slug) уже существует. Пожалуйста, используйте другой URL.' 
+        }
+      }
+    }
+    
     const product = await db.product.update({
       where: { id },
       data: updateData
@@ -57,8 +105,16 @@ export async function updateProduct(data: ProductUpdateInput) {
     revalidatePath('/')
     
     return { success: true, product }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка при обновлении товара:', error)
+    if (error.code === 'P2002') {
+      if (error.meta?.target?.includes('sku')) {
+        return { success: false, error: 'Товар с таким артикулом (SKU) уже существует' }
+      }
+      if (error.meta?.target?.includes('slug')) {
+        return { success: false, error: 'Товар с таким URL (slug) уже существует' }
+      }
+    }
     return { success: false, error: 'Не удалось обновить товар' }
   }
 }
@@ -257,6 +313,29 @@ export async function checkSlugUniqueness(slug: string, productId?: number) {
   } catch (error) {
     console.error('Ошибка при проверке уникальности slug:', error)
     return { success: false, isUnique: false, error: 'Не удалось проверить уникальность URL' }
+  }
+}
+
+// Проверка уникальности SKU товара
+export async function checkSkuUniqueness(sku: string, productId?: number) {
+  try {
+    const where: Record<string, unknown> = { sku }
+    
+    // Если указан ID товара, исключаем его из поиска
+    if (productId) {
+      where.id = { not: productId }
+    }
+    
+    const existingProduct = await db.product.findFirst({ where })
+    
+    return { 
+      success: true, 
+      isUnique: !existingProduct,
+      product: existingProduct
+    }
+  } catch (error) {
+    console.error('Ошибка при проверке уникальности SKU:', error)
+    return { success: false, isUnique: false, error: 'Не удалось проверить уникальность артикула' }
   }
 }
 

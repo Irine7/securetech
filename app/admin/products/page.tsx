@@ -111,16 +111,20 @@ export default function ProductsPage() {
     {
       accessorKey: "main_image",
       header: "Изображение",
-      cell: ({ row }) => (
-        <div className="w-12 h-12 relative rounded overflow-hidden">
-          <Image
-            src={"/placeholder-test.svg?height=48&width=48"}
-            alt={row.getValue("name")}
-            fill
-            className="object-cover"
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <div className="w-12 h-12 relative rounded overflow-hidden bg-gray-50">
+            <Image
+              src={product.main_image || "/placeholder-test.svg"}
+              alt={String(row.getValue("name"))}
+              fill
+              className="object-contain"
+              priority={false}
+            />
+          </div>
+        );
+      },
       enableSorting: false,
     },
     {

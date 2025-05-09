@@ -237,6 +237,50 @@ export async function getOrderDetails(orderId: number) {
   }
 }
 
+// Проверка уникальности slug товара
+export async function checkSlugUniqueness(slug: string, productId?: number) {
+  try {
+    const where: Record<string, unknown> = { slug }
+    
+    // Если указан ID товара, исключаем его из поиска
+    if (productId) {
+      where.id = { not: productId }
+    }
+    
+    const existingProduct = await db.product.findFirst({ where })
+    
+    return { 
+      success: true, 
+      isUnique: !existingProduct,
+      product: existingProduct
+    }
+  } catch (error) {
+    console.error('Ошибка при проверке уникальности slug:', error)
+    return { success: false, isUnique: false, error: 'Не удалось проверить уникальность URL' }
+  }
+}
+
+// Получение продукта по ID
+export async function getProductById(id: number) {
+  try {
+    const product = await db.product.findUnique({
+      where: { id },
+      include: {
+        images: true
+      }
+    })
+    
+    if (!product) {
+      return { success: false, error: 'Товар не найден' }
+    }
+    
+    return { success: true, product }
+  } catch (error) {
+    console.error('Ошибка при получении товара:', error)
+    return { success: false, error: 'Не удалось получить товар' }
+  }
+}
+
 // Функция для админ-дашборда
 export async function getDashboardStats() {
   try {

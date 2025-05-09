@@ -146,8 +146,8 @@ export default function Header() {
             <Link href="/support" className="text-sm font-medium">
               Поддержка
             </Link>
-            <Link href="/about" className="text-sm font-medium">
-              О бренде
+            <Link href="/admin" className="text-sm font-medium">
+              Админ панель
             </Link>
           </nav>
         </div>

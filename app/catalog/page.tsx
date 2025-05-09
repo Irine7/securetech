@@ -618,19 +618,23 @@ export default function CatalogPage() {
                     >
                       <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-md overflow-hidden">
                         <Image
-                          src={"/placeholder-test.svg"}
+                          src={product.main_image || "/placeholder-test.svg"}
                           alt={product.name}
-                          width={100}
-                          height={100}
+                          width={300}
+                          height={300}
                           className="w-full h-full object-contain"
-                          unoptimized
+                          priority
                         />
                       </div>
                       <div className="flex-1 ml-6">
                         <Link href={`/product/${product.slug}`}>
                           <h3 className="text-lg font-medium hover:text-orange-500">{product.name}</h3>
                         </Link>
-                        <div className="text-sm text-muted-foreground mt-1">{product.description}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {product.description && product.description.length > 200 
+                            ? `${product.description.substring(0, 200)}...` 
+                            : product.description}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 ml-4">
                         <div className="text-xl font-bold">{product.price.toLocaleString()} ₽</div>
@@ -657,19 +661,23 @@ export default function CatalogPage() {
                     <div key={product.id} className="border rounded-md overflow-hidden">
                       <div className="p-4 flex justify-center bg-gray-50">
                         <Image
-                          src={"/placeholder-test.svg"}
+                          src={product.main_image || "/placeholder-test.svg"}
                           alt={product.name}
-                          width={150}
-                          height={150}
-                          className="h-[150px] w-[150px] object-contain"
-                          unoptimized
+                          width={300}
+                          height={300}
+                          className="h-[300px] w-[300px] object-contain"
+                          priority
                         />
                       </div>
                       <div className="p-4">
                         <Link href={`/product/${product.slug}`}>
                           <h3 className="text-lg font-medium hover:text-orange-500">{product.name}</h3>
                         </Link>
-                        <div className="text-sm text-muted-foreground mt-1">{product.description}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {product.description && product.description.length > 200 
+                            ? `${product.description.substring(0, 200)}...` 
+                            : product.description}
+                        </div>
                         <div className="flex justify-between items-center mt-4">
                           <div className="text-xl font-bold">{product.price.toLocaleString()} ₽</div>
                         </div>

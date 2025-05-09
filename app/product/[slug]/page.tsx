@@ -53,10 +53,12 @@ type Product = {
   specifications?: ProductSpecification[]
 }
 
-export default function ProductPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
-  // Next.js 15 передает params как Promise
-  const resolvedParams = typeof params === 'object' && 'then' in params ? React.use(params) : params;
-  const slug = resolvedParams.slug;
+// В Next.js 15 используем Usable тип для параметров
+import type { Usable } from "react";
+
+export default function ProductPage({ params }: { params: Usable<{ slug: string }> }) {
+  // React.use не должен вызываться внутри try/catch блока
+  const { slug } = React.use(params);
   
   const [product, setProduct] = useState<Product | null>(null)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -91,7 +93,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       id: product.slug,
       name: product.name,
       price: product.price,
-      image: "/placeholder-test.svg?height=100&width=100",
+      image: product.main_image || "/placeholder-test.svg",
     })
 
     toast({
@@ -162,12 +164,12 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
           <div className="relative border rounded-lg overflow-hidden bg-white">
             {product.is_hit && <Badge className="absolute top-2 left-2 z-10 bg-orange-500">ХИТ ПРОДАЖ</Badge>}
             <Image
-              src={"/placeholder-test.svg?height=600&width=600"}
+              src={product.main_image || "/placeholder-test.svg"}
               alt={product.name}
               width={600}
               height={600}
               className="w-full object-contain aspect-square"
-              unoptimized
+              priority
             />
           </div>
           {product.images && product.images.length > 1 && (
@@ -181,12 +183,12 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                   onClick={() => setActiveImageIndex(index)}
                 >
                   <Image
-                    src={"/placeholder-test.svg?height=80&width=80"}
+                    src={image.image_url || "/placeholder-test.svg"}
                     alt={`${product.name} - Изображение ${index + 1}`}
                     width={80}
                     height={80}
                     className="w-full h-full object-contain"
-                    unoptimized
+                    loading="lazy"
                   />
                 </div>
               ))}

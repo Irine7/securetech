@@ -6,10 +6,11 @@ interface CategoryCardProps {
   description: string
   image?: string
   main_image?: string
+  image_url?: string
   href: string
 }
 
-export default function CategoryCard({ title, description, image, main_image, href }: CategoryCardProps) {
+export default function CategoryCard({ title, description, image, main_image, image_url, href }: CategoryCardProps) {
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-white">
       <Link href={href} className="absolute inset-0 z-10">
@@ -17,7 +18,7 @@ export default function CategoryCard({ title, description, image, main_image, hr
       </Link>
       <div className="aspect-square overflow-hidden bg-gray-100">
         <Image
-          src={main_image || image || "/placeholder-test.svg"}
+          src={image_url || main_image || image || "/placeholder-test.svg"}
           alt={title}
           width={400}
           height={400}

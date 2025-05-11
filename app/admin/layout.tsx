@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingBag, Package, Users, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, ShoppingBag, Package, Users, Settings, LogOut, FolderTree } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -21,6 +21,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: "Товары",
       href: "/admin/products",
       icon: <Package className="h-5 w-5" />
+    },
+    {
+      title: "Категории",
+      href: "/admin/categories",
+      icon: <FolderTree className="h-5 w-5" />
     },
     {
       title: "Заказы",

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ColumnDef, 
   flexRender, 
@@ -41,40 +41,57 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/components/ui/use-toast"
-import { getAllOrders, updateOrderStatus, getOrderDetails } from "@/app/actions/admin"
+import { getOrders, updateOrderStatus, getOrder } from "@/app/actions/orders"
 
-// Тип для заказа
+// Типы данных для заказов
 interface OrderItem {
   id: number
-  product_id: number
-  order_id: number
   quantity: number
   price: number
-  product: {
+  
+  // Поля из нового API
+  productId?: number
+  title?: string
+  
+  // Поля из старого API
+  product_id?: number
+  order_id?: number
+  product?: {
     id: number
     name: string
-    sku: string
+    sku?: string
   }
 }
 
 interface Order {
   id: number
-  customer_name: string
-  customer_email: string
-  customer_phone: string
   status: string
-  total_amount: number
-  created_at: string
-  orderItems: OrderItem[]
+  
+  // Поля из нового API
+  userEmail?: string
+  userName?: string
+  userPhone?: string
+  address?: string
+  createdAt?: string
+  updatedAt?: string
+  totalPrice?: number
+  items?: OrderItem[]
+  
+  // Поля из старого API
+  customer_name?: string
+  customer_email?: string
+  customer_phone?: string
+  created_at?: string
+  total_amount?: number
+  orderItems?: OrderItem[]
 }
 
-// Отображаемые статусы заказов
+// Отображаемые статусы заказов с соответствием серверным значениям
 const orderStatuses = [
-  { value: "новый", label: "Новый" },
-  { value: "обработка", label: "В обработке" },
-  { value: "отправлен", label: "Отправлен" },
-  { value: "доставлен", label: "Доставлен" },
-  { value: "отменен", label: "Отменен" }
+  { value: "CREATED", label: "Новый" },
+  { value: "VIEWED", label: "В обработке" },
+  { value: "COMPLETED", label: "Выполнен" },
+  { value: "CANCELED", label: "Отменен" }
 ]
 
 // Функция для форматирования даты
@@ -92,15 +109,13 @@ function formatDate(dateString: string) {
 // Функция для определения цвета статуса
 function getStatusColor(status: string) {
   switch (status) {
-    case "новый":
+    case "CREATED":
       return "bg-blue-100 text-blue-800"
-    case "обработка":
+    case "VIEWED":
       return "bg-yellow-100 text-yellow-800"
-    case "отправлен":
-      return "bg-indigo-100 text-indigo-800"
-    case "доставлен":
+    case "COMPLETED":
       return "bg-green-100 text-green-800"
-    case "отменен":
+    case "CANCELED":
       return "bg-red-100 text-red-800"
     default:
       return "bg-gray-100 text-gray-800"
@@ -109,46 +124,78 @@ function getStatusColor(status: string) {
 
 export default function OrdersPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState({
-    currentPage: 1,
+    currentPage: Number.parseInt(searchParams.get("page") || "1", 10),
     totalPages: 1,
     limit: 10
   })
+  
+  // Фильтр по статусу
+  const [statusFilter, setStatusFilter] = useState<string>("")
   
   // Состояние для просмотра деталей заказа
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   
-  // Загрузка заказов
+  // Отладочный эффект для логирования товаров в заказе
   useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        setLoading(true)
-        const response = await getAllOrders(pagination.currentPage, pagination.limit)
-        setOrders(response.orders)
-        setPagination({
-          currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          limit: pagination.limit
-        })
-      } catch (error) {
-        console.error('Ошибка при загрузке заказов:', error)
-        toast({
-          title: "Ошибка",
-          description: "Не удалось загрузить заказы",
-          variant: "destructive"
-        })
-      } finally {
-        setLoading(false)
-      }
+    if (selectedOrder) {
+      console.log("Render order details with items:", selectedOrder.items);
     }
-    
+  }, [selectedOrder]);
+  
+  // Загрузка заказов
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      const response = await getOrders({
+        status: statusFilter && statusFilter !== 'all' ? statusFilter : undefined,
+        limit: pagination.limit,
+        offset: (pagination.currentPage - 1) * pagination.limit
+      })
+      
+      if (response.success) {
+        // Форматируем данные и обновляем состояние
+        const orders = response.orders.map((order: any) => ({
+          id: order.id,
+          status: order.status,
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          customer_name: order.customer_name,
+          email: order.email,
+          phone: order.phone,
+          address: order.address,
+          comment: order.comment,
+          total_amount: order.total_amount,
+          items_count: order.items_count,
+          total_items: order.total_items
+        }))
+        
+        setOrders(orders)
+        setPagination(prev => ({
+          ...prev,
+          totalPages: Math.ceil((response.pagination?.total || 0) / pagination.limit)
+        }))
+      } else {
+        console.error('Ошибка при загрузке заказов:', response.error)
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке заказов:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // Загружаем заказы при изменении пагинации или фильтра
+  useEffect(() => {
     loadOrders()
-  }, [pagination.currentPage, pagination.limit])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.currentPage, pagination.limit, statusFilter])
   
   // Определение колонок таблицы
   const columns: ColumnDef<Order>[] = [
@@ -196,18 +243,20 @@ export default function OrdersPage() {
     {
       id: "actions",
       header: "Действия",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2 justify-end">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => handleViewOrder(row.original.id)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="text-right">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/admin/orders/${row.original.id}`)}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Открыть
+            </Button>
+          </div>
+        )
+      },enableSorting: false,
     },
   ]
   
@@ -227,25 +276,44 @@ export default function OrdersPage() {
   // Обработка просмотра заказа
   const handleViewOrder = async (orderId: number) => {
     try {
-      const result = await getOrderDetails(orderId)
+      setLoading(true)
+      const response = await getOrder({ orderId })
       
-      if (result.success && result.order) {
-        setSelectedOrder(result.order)
-        setDetailsOpen(true)
+      if (response.success && response.order) {
+        // Убедимся, что полученный заказ соответствует ожидаемой структуре Order
+        const order = {
+          ...response.order,
+          // Поля для отображения данных клиента
+          customer_name: response.order.customer_name || response.order.userName || '',
+          customer_email: response.order.customer_email || response.order.userEmail || response.order.email || '',
+          customer_phone: response.order.customer_phone || response.order.userPhone || response.order.phone || '',
+          // Товары в заказе
+          items: response.order.items || [],
+          orderItems: response.order.items || []
+        } as Order;
+        
+        // Подробный лог для отладки
+        console.log("Loaded order:", order);
+        console.log("Items in order:", order.items);
+        console.log("Order items structure:", JSON.stringify(order.items, null, 2));
+        setSelectedOrder(order);
+        setDetailsOpen(true);
       } else {
         toast({
           title: "Ошибка",
-          description: result.error || "Не удалось загрузить детали заказа",
+          description: response.error || "Не удалось загрузить информацию о заказе",
           variant: "destructive"
         })
       }
     } catch (error) {
-      console.error("Ошибка при получении деталей заказа:", error)
+      console.error('Ошибка при загрузке деталей заказа:', error)
       toast({
         title: "Ошибка",
-        description: "Произошла ошибка при загрузке деталей заказа",
+        description: "Не удалось загрузить информацию о заказе",
         variant: "destructive"
       })
+    } finally {
+      setLoading(false)
     }
   }
   
@@ -253,34 +321,79 @@ export default function OrdersPage() {
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
       setUpdatingStatus(true)
-      const result = await updateOrderStatus(orderId, newStatus)
+      console.log(`Обновление статуса заказа #${orderId} на ${newStatus}`);
+      const response = await updateOrderStatus({ orderId, status: newStatus })
       
-      if (result.success) {
-        // Обновляем статус заказа в локальном состоянии
-        setOrders(orders.map(order => 
-          order.id === orderId ? { ...order, status: newStatus } : order
-        ))
+      // Проверяем наличие полных данных в ответе
+      console.log("Ответ от updateOrderStatus:", JSON.stringify(response, null, 2));
+      
+      if (response.success) {
+        toast({
+          title: "Успешно",
+          description: "Статус заказа обновлен",
+          variant: "default"
+        })
         
-        if (selectedOrder) {
-          setSelectedOrder({ ...selectedOrder, status: newStatus })
+        // Если в ответе есть данные заказа с товарами, используем их
+        if (response.order) {
+          console.log("Найдены данные заказа в ответе:", JSON.stringify(response.order, null, 2));
+          // Дополнительная валидация наличия товаров
+          const hasItems = response.order.items && Array.isArray(response.order.items) && response.order.items.length > 0;
+          console.log(`Заказ содержит товары: ${hasItems} (количество: ${hasItems ? response.order.items.length : 0})`);
+          // Обновляем выбранный заказ
+          setSelectedOrder(response.order);
+        } else {
+          // Если в ответе нет данных заказа, делаем дополнительный запрос
+          console.log("Загрузка полных данных заказа через getOrder");
+          const orderDetails = await getOrder({ orderId });
+          
+          if (orderDetails.success && orderDetails.order) {
+            console.log("Получены данные через getOrder:", JSON.stringify(orderDetails.order, null, 2));
+            // Обновляем данные заказа с полной информацией
+            const fullOrder = {
+              ...orderDetails.order,
+              // Поля для отображения данных клиента
+              customer_name: orderDetails.order.customer_name || orderDetails.order.userName || '',
+              customer_email: orderDetails.order.customer_email || orderDetails.order.userEmail || orderDetails.order.email || '',
+              customer_phone: orderDetails.order.customer_phone || orderDetails.order.userPhone || orderDetails.order.phone || '',
+              // Обновляем статус заказа
+              status: newStatus,
+              // Товары в заказе
+              items: orderDetails.order.items || [],
+              orderItems: orderDetails.order.items || []
+            } as Order;
+            
+            console.log("Updated order with items:", JSON.stringify(fullOrder.items, null, 2));
+            setSelectedOrder(fullOrder);
+          } else {
+            // Если не удалось загрузить полную информацию, просто обновляем статус
+            if (selectedOrder && selectedOrder.id === orderId) {
+              setSelectedOrder({ ...selectedOrder, status: newStatus })
+            }
+          }
         }
         
-        toast({
-          title: "Успех",
-          description: "Статус заказа обновлен",
-        })
+        // Обновляем список заказов
+        setOrders(prev => 
+          prev.map(order => 
+            order.id === orderId ? { ...order, status: newStatus } : order
+          )
+        )
+        
+        // Перезагружаем список заказов для обновления данных
+        loadOrders()
       } else {
         toast({
           title: "Ошибка",
-          description: result.error || "Не удалось обновить статус заказа",
+          description: response.error || "Не удалось обновить статус заказа",
           variant: "destructive"
         })
       }
     } catch (error) {
-      console.error("Ошибка при обновлении статуса заказа:", error)
+      console.error('Ошибка при обновлении статуса заказа:', error)
       toast({
         title: "Ошибка",
-        description: "Произошла ошибка при обновлении статуса",
+        description: "Не удалось обновить статус заказа",
         variant: "destructive"
       })
     } finally {
@@ -298,11 +411,32 @@ export default function OrdersPage() {
   
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Заказы</h1>
-        <p className="text-muted-foreground">
-          Управление заказами клиентов
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Заказы</h1>
+          <p className="text-muted-foreground">Управление заказами и отслеживание статусов</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              setStatusFilter(value);
+              setPagination(prev => ({ ...prev, currentPage: 1 })); // При смене фильтра возвращаемся на первую страницу
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              {orderStatuses.map(status => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       <div className="rounded-md border">
@@ -404,7 +538,7 @@ export default function OrdersPage() {
               <DialogHeader>
                 <DialogTitle>Заказ #{selectedOrder.id}</DialogTitle>
                 <DialogDescription>
-                  Оформлен {formatDate(selectedOrder.created_at)}
+                  Оформлен {formatDate(selectedOrder.createdAt || selectedOrder.created_at || new Date().toISOString())}
                 </DialogDescription>
               </DialogHeader>
               
@@ -418,15 +552,19 @@ export default function OrdersPage() {
                       <dl className="space-y-2">
                         <div>
                           <dt className="text-sm font-medium text-muted-foreground">ФИО</dt>
-                          <dd>{selectedOrder.customer_name}</dd>
+                          <dd>{selectedOrder.userName || selectedOrder.customer_name || 'Не указано'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-muted-foreground">Email</dt>
-                          <dd>{selectedOrder.customer_email}</dd>
+                          <dd>{selectedOrder.userEmail || selectedOrder.customer_email || 'Не указано'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-muted-foreground">Телефон</dt>
-                          <dd>{selectedOrder.customer_phone}</dd>
+                          <dd>{selectedOrder.userPhone || selectedOrder.customer_phone || 'Не указано'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-muted-foreground">Адрес</dt>
+                          <dd>{selectedOrder.address || 'Не указано'}</dd>
                         </div>
                       </dl>
                     </CardContent>
@@ -448,7 +586,7 @@ export default function OrdersPage() {
                         </div>
                         
                         <div>
-                          <label className="text-sm font-medium">
+                          <label htmlFor="status-select" className="text-sm font-medium">
                             Изменить статус
                           </label>
                           <Select
@@ -456,7 +594,7 @@ export default function OrdersPage() {
                             value={selectedOrder.status}
                             onValueChange={(value) => handleStatusChange(selectedOrder.id, value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger id="status-select">
                               <SelectValue placeholder="Выберите статус" />
                             </SelectTrigger>
                             <SelectContent>
@@ -488,24 +626,51 @@ export default function OrdersPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedOrder.orderItems.map((item) => (
+                        {/* Отладочная информация - вызываем консольный лог через useEffect */}
+                        {selectedOrder && selectedOrder.items && selectedOrder.items.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8">
+                              Товары в заказе не найдены
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {/* Отладочная информация о товарах в заказе */}
+                        {selectedOrder && (
+                          <>
+                            {console.log("Rendering items in dialog:", selectedOrder.items)}
+                          </>
+                        )}
+                        
+                        {selectedOrder && Array.isArray(selectedOrder.items) && selectedOrder.items.map((item: any) => (
                           <TableRow key={item.id}>
                             <TableCell>
-                              <div>
-                                <div className="font-medium">{item.product.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  Артикул: {item.product.sku}
+                              <div className="flex items-start gap-3">
+                                {(item.product?.image || item.image_url) && (
+                                  <div className="relative w-10 h-10 overflow-hidden rounded border">
+                                    <img 
+                                      src={item.product?.image || item.image_url || ''} 
+                                      alt={item.title || item.product?.name || 'Товар'}
+                                      className="object-cover w-full h-full"
+                                    />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-medium">{item.title || item.name || (item.product?.name) || 'Товар'}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {item.product?.sku ? `Артикул: ${item.product.sku}` : 
+                                      `ID: ${item.productId || item.product_id || (item.product?.id) || ''}`}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              ₽{item.price.toLocaleString()}
+                              ₽{(item.price || 0).toLocaleString()}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.quantity}
+                              {item.quantity || 1}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              ₽{(item.price * item.quantity).toLocaleString()}
+                              ₽{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -515,7 +680,7 @@ export default function OrdersPage() {
                     <div className="flex justify-end mt-4 pt-4 border-t">
                       <div className="text-right space-y-1">
                         <div className="text-lg font-bold">
-                          Итого: ₽{selectedOrder.total_amount.toLocaleString()}
+                          Итого: ₽{(selectedOrder.totalPrice || selectedOrder.total_amount || 0).toLocaleString()}
                         </div>
                       </div>
                     </div>

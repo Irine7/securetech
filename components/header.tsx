@@ -140,11 +140,8 @@ export default function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link href="/technology" className="text-sm font-medium">
-              Технологии
-            </Link>
-            <Link href="/support" className="text-sm font-medium">
-              Поддержка
+            <Link href="/shop" className="text-sm font-medium">
+              Магазин
             </Link>
             <Link href="/admin" className="text-sm font-medium">
               Админ панель

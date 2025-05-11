@@ -200,7 +200,13 @@ export async function getCategories(limit?: number) {
         name: 'asc'
       },
       take: limit,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        image_url: true,
+        parent_id: true,
         _count: {
           select: {
             products: true
@@ -216,11 +222,12 @@ export async function getCategories(limit?: number) {
 
 export async function getProductFilters() {
   try {
-    // Get categories with product counts
+    // Get categories with product counts and images
     const categories = await db.category.findMany({
       select: {
         id: true,
         name: true,
+        image_url: true,
         _count: {
           select: {
             products: true

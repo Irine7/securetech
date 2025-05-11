@@ -484,7 +484,7 @@ export default function CatalogPage() {
                         <h4 className="text-sm font-medium mb-2">Категории</h4>
                         <div className="space-y-2">
                           {categories.map((category) => (
-                            <div key={category.id} className="flex items-center space-x-2">
+                            <div key={category.id} className="flex items-center space-x-3 py-1">
                               <Checkbox
                                 id={`mobile-category-${category.id}`}
                                 checked={category.checked}
@@ -492,9 +492,20 @@ export default function CatalogPage() {
                                   handleCategoryChange(category.id.toString(), checked as boolean)
                                 }
                               />
+                              {category.image_url && (
+                                <div className="relative w-8 h-8 overflow-hidden rounded-md border border-gray-200 flex-shrink-0">
+                                  <Image
+                                    src={category.image_url}
+                                    alt={category.name}
+                                    width={32}
+                                    height={32}
+                                    className="object-cover"
+                                  />
+                                </div>
+                              )}
                               <label
                                 htmlFor={`mobile-category-${category.id}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
                               >
                                 {category.name} ({category.count})
                               </label>
@@ -764,7 +775,7 @@ export default function CatalogPage() {
                   <AccordionContent className="px-4 pb-3">
                     <div className="space-y-2">
                       {categories.map((category) => (
-                        <div key={category.id} className="flex items-center space-x-2">
+                        <div key={category.id} className="flex items-center space-x-3 py-1">
                           <Checkbox
                             id={`category-${category.id}`}
                             checked={category.checked}
@@ -772,9 +783,20 @@ export default function CatalogPage() {
                               handleCategoryChange(category.id.toString(), checked as boolean)
                             }
                           />
+                          {category.image_url && (
+                            <div className="relative w-8 h-8 overflow-hidden rounded-md border border-gray-200 flex-shrink-0">
+                              <Image
+                                src={category.image_url}
+                                alt={category.name}
+                                width={32}
+                                height={32}
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
                           <label
                             htmlFor={`category-${category.id}`}
-                            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
                           >
                             {category.name} ({category.count})
                           </label>

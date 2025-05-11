@@ -147,7 +147,9 @@ export default function CartPage() {
                 <Button variant="outline">Применить</Button>
               </div>
 
-              <Button className="w-full bg-orange-500 hover:bg-orange-600">Оформить заказ</Button>
+              <Button asChild className="w-full bg-orange-500 hover:bg-orange-600">
+                <Link href="/checkout">Оформить заказ</Link>
+              </Button>
             </div>
           </div>
         </div>

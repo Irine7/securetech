@@ -220,7 +220,7 @@ export async function getAllOrders(page = 1, limit = 10) {
       take: limit,
       orderBy: { created_at: 'desc' },
       include: {
-        orderItems: {
+        items: {
           include: {
             product: true
           }
@@ -369,7 +369,10 @@ export async function getDashboardStats() {
     // Проверяем, существует ли модель Order в Prisma
     let ordersCount = 0;
     let totalSales = 0;
+    let completedSales = 0;
+    let newOrdersCount = 0;
     let ordersByStatus: Record<string, number> = {};
+    let popularProducts: Array<{id: number, name: string, count: number, total: number}> = [];
     
     try {
       // Общее количество заказов
@@ -384,6 +387,25 @@ export async function getDashboardStats() {
       
       totalSales = salesResult._sum.total_amount || 0
       
+      // Сумма выполненных заказов (статус COMPLETED)
+      const completedSalesResult = await db.order.aggregate({
+        where: {
+          status: 'COMPLETED'
+        },
+        _sum: {
+          total_amount: true
+        }
+      })
+      
+      completedSales = completedSalesResult._sum.total_amount || 0
+      
+      // Количество новых заказов (статус CREATED)
+      newOrdersCount = await db.order.count({
+        where: {
+          status: 'CREATED'
+        }
+      })
+      
       // Количество заказов по статусам
       const ordersStatusResult = await db.order.groupBy({
         by: ['status'],
@@ -393,9 +415,41 @@ export async function getDashboardStats() {
       })
       
       ordersByStatus = ordersStatusResult.reduce<Record<string, number>>((acc, curr) => {
-        acc[curr.status] = curr._count.id
-        return acc
+        // Преобразуем статусы для отображения
+        const statusMap: Record<string, string> = {
+          'CREATED': 'Новый',
+          'VIEWED': 'В обработке',
+          'COMPLETED': 'Выполнен',
+          'CANCELED': 'Отменен'
+        };
+        
+        const displayStatus = statusMap[curr.status] || curr.status;
+        acc[displayStatus] = curr._count.id;
+        return acc;
       }, {})
+      
+      // Получение популярных товаров (топ-5)
+      const popularProductsResult = await db.$queryRaw`
+        SELECT 
+          p.id, 
+          p.name, 
+          COUNT(oi.id) as order_count, 
+          SUM(oi.quantity) as total_quantity
+        FROM "Product" p
+        JOIN "OrderItem" oi ON p.id = oi.product_id
+        JOIN "Order" o ON oi.order_id = o.id
+        GROUP BY p.id, p.name
+        ORDER BY total_quantity DESC
+        LIMIT 5
+      `;
+      
+      popularProducts = (popularProductsResult as any[]).map(item => ({
+        id: item.id,
+        name: item.name,
+        count: Number(item.order_count),
+        total: Number(item.total_quantity)
+      }));
+      
     } catch (e) {
       console.log('Модель заказов не существует или произошла другая ошибка:', e)
     }
@@ -404,7 +458,10 @@ export async function getDashboardStats() {
       productsCount,
       ordersCount,
       totalSales,
-      ordersByStatus
+      completedSales,
+      newOrdersCount,
+      ordersByStatus,
+      popularProducts
     }
   } catch (error) {
     console.error('Ошибка при получении статистики:', error)
@@ -413,7 +470,10 @@ export async function getDashboardStats() {
       productsCount: 0,
       ordersCount: 0,
       totalSales: 0,
-      ordersByStatus: {}
+      completedSales: 0,
+      newOrdersCount: 0,
+      ordersByStatus: {},
+      popularProducts: []
     }
   }
 }

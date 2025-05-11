@@ -54,6 +54,7 @@ export default async function Home() {
                   key={category.id}
                   title={category.name}
                   description={category.description || ""}
+                  image_url={category.image_url ?? undefined}
                   image="/placeholder.svg?height=300&width=400"
                   href={`/catalog?category=${category.id}`}
                 />
